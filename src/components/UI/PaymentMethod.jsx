@@ -7,10 +7,7 @@ import "../../styles/payment-method.css";
 
 
 
-const handleReserveNowClick = () => {
-  alert("Reservation successful!");
-  
-};
+
 
 const PaymentMethod = () => {
   return (
