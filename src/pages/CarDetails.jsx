@@ -1,16 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { Container, Row, Col, Form, FormGroup, Input } from "reactstrap";
 import Helmet from "../components/Helmet/Helmet";
 import { useParams, useNavigate } from "react-router-dom";
 import BookingForm from "../components/UI/BookingForm";
 import PaymentMethod from "../components/UI/PaymentMethod";
 import axiosInstance from './axiosInstance';
+import { AuthContext } from '../context/AuthContext';
+import '../styles/CarDetails.css';
 
 const CarDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);  // AuthContext'ten kullanıcı bilgilerini alıyoruz
   const [carDetails, setCarDetails] = useState(null);
   const [comment, setComment] = useState({ content: "", catalogId: id });
+  const [comments, setComments] = useState([]); // Yorumları saklamak için state
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +46,12 @@ const CarDetails = () => {
           ...prevComment,
           catalogId: catalogData.id,
         }));
+
+        // Yorumları fetch et ve catalogId ile filtrele
+        const commentsResponse = await axiosInstance.get(`/api/Comment/list`);
+        const allComments = commentsResponse.data;
+        const filteredComments = allComments.filter(c => c.catalogId === catalogData.id);
+        setComments(filteredComments);
       } catch (error) {
         console.error("Error fetching car details:", error);
       }
@@ -63,9 +73,19 @@ const CarDetails = () => {
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
+    if (!user) {
+      alert("You must be logged in to post a comment");
+      return;
+    }
+
     try {
-      await axiosInstance.post('/api/Comment/add', comment);
+      await axiosInstance.post('/api/Comment/add', { ...comment, email: user.email });
       alert('Yorum başarıyla gönderildi!');
+      // Yorumları yeniden fetch et ve catalogId ile filtrele
+      const commentsResponse = await axiosInstance.get(`/api/Comment/list`);
+      const allComments = commentsResponse.data;
+      const filteredComments = allComments.filter(c => c.catalogId === comment.catalogId);
+      setComments(filteredComments);
     } catch (error) {
       console.error("Yorum gönderilirken hata oluştu:", error);
       alert('Yorum gönderilirken bir hata oluştu.');
@@ -125,7 +145,21 @@ const CarDetails = () => {
       <section>
         <Container>
           <Row>
-            <Col lg="6">
+            <Col lg="12">
+              <div className="comments-section mt-5">
+                <h4>Comments</h4>
+                {comments.length > 0 ? (
+                  comments.map((comment) => (
+                    <div key={comment.id} className="comment">
+                      <p className="comment-email">{comment.email}</p>
+                      <p className="comment-time">{new Date(comment.createdDate).toLocaleString()}</p>
+                      <p className="comment-content">{comment.content}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="section__description">No comments yet. Be the first to comment!</p>
+                )}
+              </div>
               <div className="leave__comment-form mt-5">
                 <h4>Leave a Comment</h4>
                 <p className="section__description">
